@@ -30,8 +30,8 @@ export default defineConfig({
   build: {
     lib: {
       entry: "./src/main.tsx",
-      name: "subscription",
-      fileName: (format) => `subscription.${format}.js`,
+      name: "signalr-client",
+      fileName: (format) => `signalr-client.${format}.js`,
     },
     rollupOptions:{
               external:['./src/lib/utils.ts']

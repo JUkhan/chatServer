@@ -9,20 +9,26 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )*/
 //import {cn} from './lib/utils'
+import ChatWindow from '@/signalrClient/chatWindow'
 import './index.css'
-import {Button} from './components/ui/button'
+//import {Button} from './components/ui/button'
 //import React from "react"
 //import ReactDOM from "react-dom/client" 
 import r2wc from '@r2wc/react-to-web-component'
 
-const Greeting = ({ name }:{name:string}) => {
+/*const Greeting = ({ name }:{name:string}) => {
   return <Button>Hello -- , {name}!</Button>
-}
+}*/
 
-const WebGreeting = r2wc(Greeting, {
+const WebChatWindow = r2wc(ChatWindow, {
   props: {
-    name: "string",
+    hubUrl: "string",
+    currentUser:"json",
+    userList:"json",
+    hideWindow:"boolean",
+    bufferHeight:"number",
+    unreadStatusSignal:"function"
   },
 })
 
-customElements.define("web-greeting", WebGreeting)
+customElements.define("signalr-client", WebChatWindow)

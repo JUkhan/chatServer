@@ -21,9 +21,9 @@ connection.on("activeUser", function (groups) {
 connection.on("newGroup", function (group) {
     console.log('newGroup', group);
     if (group.id) {
-        group.message = 'Hi group';
+        //group.message = 'Hi group';
 
-        connection.invoke('GroupMessage', { name: 'jasim', email: 'jasim@gmail.com' }, group);
+        //connection.invoke('GroupMessage', { name: 'jasim', email: 'jasim@gmail.com' }, group);
     }
 });
 connection.on("groupMessage", function (message) {

@@ -8,7 +8,19 @@
     <title>Vite + React + TS</title>
   </head>
   <body>
-    <web-greeting name="Justin"></web-greeting>
-    <script src="./dist/subscription.umd.js"></script>
+    <!-- <ChatWindow 
+     unreadStatusSignal={unreadSignal} 
+     hubUrl='https://localhost:7111/chatHub' 
+     currentUser={user} userList={users} 
+     hideWindow={false} bufferHeight={280}/>  -->
+    <signalr-client id="client" 
+      hub-url="https://localhost:7111/chatHub" 
+      current-user='{"name":"jasim", "email":"jasim@gmail.com"}'
+      user-list='[{"name":"jasim", "email":"jasim@gmail.com"},{"name":"arif", "email":"arif@gmail.com"}]'
+      buffer-height="10"
+      hide-window="false">
+    </signalr-client>
+    <script src="./dist/signalr-client.umd.js"></script>
+    
   </body>
 </html>
