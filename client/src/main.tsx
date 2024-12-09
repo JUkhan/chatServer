@@ -27,7 +27,8 @@ const WebChatWindow = r2wc(ChatWindow, {
     userList:"json",
     hideWindow:"boolean",
     bufferHeight:"number",
-    unreadStatusSignal:"function"
+    unreadStatusSignal:"function",
+    popupMessage:"function",
   },
 })
 

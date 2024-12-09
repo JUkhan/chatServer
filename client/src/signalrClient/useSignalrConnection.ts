@@ -33,8 +33,9 @@ const useSignalrConnectionHook = (
       group.creatorId=creatorId;
       cb('newGroup', group)
     })
-    connection.on('groupMessage', function (message, groupName) {
+    connection.on('groupMessage', function (message, groupName, isPrivate) {
       message.groupName=groupName;
+      message.isPrivate=isPrivate;
       cb('groupMessage', message)
     })
     connection.on('ReceiveMessage', (user, message) => {

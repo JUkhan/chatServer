@@ -10,12 +10,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 import { ScrollArea } from '@/components/ui/scroll-area'
 import GroupChatComponent from './group'
-import { toast } from 'sonner'
+//import { toast } from 'sonner'
 import { saveToLocal } from './state'
 import useSignalrConnectionHook from './useSignalrConnection'
 import { format } from 'date-fns/format'
 import { getTime } from 'date-fns/getTime'
 import { Badge } from '@/components/ui/badge'
+
 
 type User = { name: string; email: string }
 type Params = {
@@ -24,7 +25,8 @@ type Params = {
   userList: User[]
   hideWindow?: boolean
   bufferHeight?: number
-  unreadStatusSignal?: (status: Record<string, number>) => void
+  unreadStatusSignal?: (status: Record<string, number>) => void,
+  popupMessage?: (ev:{title: string, message: string}) => void
 }
 type Group = {
   id: string
@@ -34,6 +36,7 @@ type Group = {
   message?: string
   [key: string]: any
 }
+
 const ChatWindow: React.FC<Params> = ({
   hubUrl,
   currentUser,
@@ -41,6 +44,7 @@ const ChatWindow: React.FC<Params> = ({
   hideWindow = true,
   bufferHeight = 0,
   unreadStatusSignal,
+  popupMessage,
 }) => {
   const [{ groups, selectedGroup, msgObj, unreadStatus }, setState] = useState<{
     groups: Group[]
@@ -77,24 +81,38 @@ const ChatWindow: React.FC<Params> = ({
             }
           }
           const newObj = Object.assign({}, pre)
-
+          const gname:string=data.groupName;
           if (newObj.msgObj[data.groupName]) {
             newObj.msgObj[data.groupName] = [...newObj.msgObj[data.groupName], data]
+            scrollToView();
           } else {
-            newObj.msgObj[data.groupName] = [data]
-            io.current?.invoke(
-              'MessagesByGroupId',
-              pre.groups.find((it) => it.groupName === data.groupName),
-            )
+            if(gname.endsWith("All Users")){
+              if(pre.groups[0].groupName.includes(gname.replace("All Users", ''))){
+                newObj.msgObj[data.groupName] = [data]
+                io.current?.invoke(
+                  'MessagesByGroupId',
+                  pre.groups.find((it) => it.groupName === data.groupName),
+                )
+              }
+            }else{
+              newObj.msgObj[data.groupName] = [data]
+              io.current?.invoke(
+                'MessagesByGroupId',
+                pre.groups.find((it) => it.groupName === data.groupName),
+              );
+            }
           }
-          scrollToView()
+          
 
           if (pre.selectedGroup.groupName !== data.groupName) {
+            if(gname.endsWith("All Users")){
+              if(!pre.groups[0].groupName.includes(gname.replace("All Users", ''))){return pre;}
+            }
             const st = pre.unreadStatus[data.groupName] || 0
             newObj.unreadStatus = { ...newObj.unreadStatus, [data.groupName]: st + 1 }
-            toast(data.groupName + ` -  ${data.userName}`, {
-              description: data.message,
-            })
+            if (typeof popupMessage === 'function'){
+              popupMessage({title:`${getGroupName(data)} - ${data.userName}`,  message:data.message })
+            }
             if (typeof unreadStatusSignal === 'function') {
               setTimeout(() => {
                 unreadStatusSignal(newObj.unreadStatus)
@@ -161,9 +179,10 @@ const ChatWindow: React.FC<Params> = ({
     )
     setMessage('')
   }
-  const userName = `${currentUser?.name}`
-  const getPrivateName = (groupName: string) => {
-    return groupName.replace(userName, '').replace(',', '')
+  const userName = `${currentUser?.name}`;
+  const getGroupName=(group:Group)=>{
+    const name=(group?.groupName??'').replace(/\$@&\$.+\$@&\$/,'')
+    return group.isPrivate? name.replace(userName, '').replace(',', ''): name
   }
   
   return (
@@ -220,7 +239,7 @@ const ChatWindow: React.FC<Params> = ({
                     'bg-purple-200': group.id === selectedGroup.id,
                   })}
                 >
-                  <span>{group.isPrivate ? getPrivateName(group.groupName) : group.groupName}</span>
+                  <span>{getGroupName(group)}</span>
                   {unreadStatus[group.groupName] > 0 && (
                     <Badge className="ml-2" variant="destructive">
                       {unreadStatus[group.groupName]}
@@ -234,11 +253,7 @@ const ChatWindow: React.FC<Params> = ({
           <ResizablePanel className="bg-white" defaultSize={75}>
             <div className="flex items-center pl-4 h-12 border-b">
               {isPrivate === 0 ? (
-                <span>
-                  {selectedGroup.isPrivate
-                    ? getPrivateName(selectedGroup?.groupName)
-                    : selectedGroup?.groupName}
-                </span>
+                <span>{getGroupName(selectedGroup)}</span>
               ) : (
                 <GroupChatComponent
                   currentUser={currentUser}
