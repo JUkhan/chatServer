@@ -1,17 +1,37 @@
+using chatApp.DB;
 using chatApp.Hubs;
-
+using Microsoft.EntityFrameworkCore;
+var policyName = "_test";
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 // Add services to the container.
+builder.Services.AddDbContextPool<ChatDbContext>(opt =>
+    opt.UseInMemoryDatabase("MyDB")
+    //opt.UseNpgsql(builder.Configuration.GetConnectionString("BloggingContext"))
+    );
 builder.Services.AddRazorPages();
 builder.Services.AddSignalR();
-builder.Services.AddSingleton<IChatService, ChatService>();
+builder.Services.AddScoped(typeof(IAsyncRepository<>), typeof(RepositoryBase<>));
+builder.Services.AddScoped<IRegisterRepository, RegisterRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IUnreadStatusRepository, UnreadStatusRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy => policy.WithOrigins("http://localhost:3000","http://localhost:3001").AllowAnyHeader().AllowAnyMethod().AllowCredentials());
     
 });
+/*builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: policyName,
+                      policy =>
+                      {
+                          policy.WithOrigins("*").AllowAnyHeader()
+                                                    .AllowAnyMethod();
+                      });
+});*/
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

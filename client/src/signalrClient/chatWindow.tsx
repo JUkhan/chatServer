@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils'
 import MarkdownView from 'react-showdown'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-
+import { Toaster } from "@/components/ui/sonner"
 import { ScrollArea } from '@/components/ui/scroll-area'
 import GroupChatComponent from './group'
-//import { toast } from 'sonner'
+import { toast } from 'sonner'
 import { saveToLocal } from './state'
 import useSignalrConnectionHook from './useSignalrConnection'
 import { format } from 'date-fns/format'
@@ -23,10 +23,10 @@ type Params = {
   hubUrl: string
   currentUser: User
   userList: User[]
-  hideWindow?: boolean
-  bufferHeight?: number
-  unreadStatusSignal?: (status: Record<string, number>) => void,
-  popupMessage?: (ev:{title: string, message: string}) => void
+  hideWindow: boolean
+  bufferHeight: number
+  unreadStatusSignal: (status: Record<string, number>) => void,
+  popupMessage: (ev:{title: string, message: string}) => void
 }
 type Group = {
   id: string
@@ -82,36 +82,28 @@ const ChatWindow: React.FC<Params> = ({
           }
           const newObj = Object.assign({}, pre)
           const gname:string=data.groupName;
+          if(gname.endsWith("All Users")){
+            if(!pre.groups[0].groupName.includes(gname.replace("All Users", ''))){return pre;}
+          }
           if (newObj.msgObj[data.groupName]) {
             newObj.msgObj[data.groupName] = [...newObj.msgObj[data.groupName], data]
             scrollToView();
           } else {
-            if(gname.endsWith("All Users")){
-              if(pre.groups[0].groupName.includes(gname.replace("All Users", ''))){
-                newObj.msgObj[data.groupName] = [data]
-                io.current?.invoke(
-                  'MessagesByGroupId',
-                  pre.groups.find((it) => it.groupName === data.groupName),
-                )
-              }
-            }else{
               newObj.msgObj[data.groupName] = [data]
               io.current?.invoke(
                 'MessagesByGroupId',
                 pre.groups.find((it) => it.groupName === data.groupName),
               );
-            }
           }
-          
-
           if (pre.selectedGroup.groupName !== data.groupName) {
-            if(gname.endsWith("All Users")){
-              if(!pre.groups[0].groupName.includes(gname.replace("All Users", ''))){return pre;}
-            }
             const st = pre.unreadStatus[data.groupName] || 0
             newObj.unreadStatus = { ...newObj.unreadStatus, [data.groupName]: st + 1 }
             if (typeof popupMessage === 'function'){
               popupMessage({title:`${getGroupName(data)} - ${data.userName}`,  message:data.message })
+            }else{
+              toast(`${getGroupName(data)} - ${data.userName}`, {
+                description: data.message,
+              })
             }
             if (typeof unreadStatusSignal === 'function') {
               setTimeout(() => {
@@ -123,21 +115,30 @@ const ChatWindow: React.FC<Params> = ({
         })
         break
       case 'newGroup':
+        if(data.id){
+          const match=data.groupName.match(/\$@&\$.+\$@&\$/)[0];
         setState((pre) => {
+          if(!pre.groups[0].groupName.includes(match)){return pre;}
           if (!pre.groups.find((it) => it.groupName === data.groupName)) {
             if (data.usersJson.includes(currentUser.email)) {
-              const groups = [data, ...pre.groups]
+              const groups = [...pre.groups, data]
               let sg = pre.selectedGroup
               if (data.creatorId === currentUser.email) {
                 sg = data
-              } else {
+              } //else {
                 io.current?.stop()
-              }
+              //}
               return { ...pre, groups, selectedGroup: sg }
             }
           }
           return pre
-        })
+        });}else{
+          if (typeof popupMessage === 'function'){
+            popupMessage({title:data.groupName,  message:'Already exist' })
+          }else{
+            toast.info(`"${data.groupName}" already exist`)
+          }
+        }
         break
     }
   })
@@ -186,6 +187,7 @@ const ChatWindow: React.FC<Params> = ({
   }
   
   return (
+    <><Toaster/>
     <TooltipProvider>
       <div style={{ height: hideWindow ? 0 : height }} className="ml-2 mr-2 mb-2">
         <ResizablePanelGroup direction="horizontal" className="rounded border">
@@ -331,6 +333,7 @@ const ChatWindow: React.FC<Params> = ({
         </ResizablePanelGroup>
       </div>
     </TooltipProvider>
+    </>
   )
 }
 

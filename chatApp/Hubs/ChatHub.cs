@@ -18,6 +18,10 @@ namespace chatApp.Hubs
         }
         public async Task ActiveUser(User currentUser, List<User> users)
         {
+            if (currentUser == null || users == null)
+            {
+                return;
+            }
             var origin = GetOrigin();
             if (origin == null) { return; }
             chatService.SetUsers(Context.ConnectionId, currentUser, users, origin);

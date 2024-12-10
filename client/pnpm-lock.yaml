@@ -12,8 +12,8 @@ importers:
         specifier: ^8.0.7
         version: 8.0.7
       '@r2wc/react-to-web-component':
-        specifier: ^2.0.3
-        version: 2.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^2.0.2
+        version: 2.0.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@radix-ui/react-dialog':
         specifier: ^1.1.2
         version: 1.1.2(@types/react-dom@18.3.2)(@types/react@18.3.14)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -471,8 +471,8 @@ packages:
   '@r2wc/core@1.2.0':
     resolution: {integrity: sha512-vAfiuS5KywtV54SRzc4maEHcpdgeUyJzln+ATpNCOkO+ArIuOkTXd92b5YauVAd0A8B2rV/y9OeVW19vb73bUQ==}
 
-  '@r2wc/react-to-web-component@2.0.3':
-    resolution: {integrity: sha512-nlDJ0LHiWLG/EFB5tBtA+9KLF2oMBeDSAXL08NUzAuj/ac+V0NkMl/RvCFdDFnyrPQqpzpD9uOvOY2E5IFpdCQ==}
+  '@r2wc/react-to-web-component@2.0.2':
+    resolution: {integrity: sha512-HxgWXh6aipgvZ7l31m+AN0mM8KI5jkiCEBnSMBl/UKibVrhFgtsumL8fmLd5/q+OHBJKK0w4e5sAmzY1yu8dpA==}
     peerDependencies:
       react: ^18.0.0
       react-dom: ^18.0.0
@@ -761,8 +761,8 @@ packages:
   '@radix-ui/react-primitive@2.0.0':
     resolution: {integrity: sha512-ZSpFm0/uHa8zTvKBDjLFWLo8dkr4MBsiDLz0g3gMUwqgLHz9rTaRRGYDgvZPtBJgYCBKXkS9fzmoySgr8CO6Cw==}
     peerDependencies:
-      '@types/react': npm:types-react@19.0.0-rc.1
-      '@types/react-dom': npm:types-react-dom@19.0.0-rc.1
+      '@types/react': '*'
+      '@types/react-dom': '*'
       react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
     peerDependenciesMeta:
@@ -2969,7 +2969,7 @@ snapshots:
 
   '@r2wc/core@1.2.0': {}
 
-  '@r2wc/react-to-web-component@2.0.3(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+  '@r2wc/react-to-web-component@2.0.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@r2wc/core': 1.2.0
       react: 18.3.1

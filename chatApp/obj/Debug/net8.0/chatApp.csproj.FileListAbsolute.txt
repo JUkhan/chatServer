@@ -61,3 +61,14 @@ D:\chatServer\chatApp\obj\Debug\net8.0\scopedcss\bundle\chatApp.styles.css
 D:\chatServer\chatApp\obj\Debug\net8.0\scopedcss\projectbundle\chatApp.bundle.scp.css
 D:\chatServer\chatApp\obj\Debug\net8.0\chatApp.genruntimeconfig.cache
 D:\chatServer\chatApp\obj\Debug\net8.0\ref\chatApp.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.Abstractions.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.EntityFrameworkCore.InMemory.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.Caching.Memory.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.Logging.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.Logging.Abstractions.dll
+D:\chatServer\chatApp\bin\Debug\net8.0\Microsoft.Extensions.Options.dll
+D:\chatServer\chatApp\obj\Debug\net8.0\chatApp.csproj.AssemblyReference.cache
+D:\chatServer\chatApp\obj\Debug\net8.0\chatApp.csproj.CopyComplete

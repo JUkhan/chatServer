@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using chatApp.DB;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace chatApp.Hubs
@@ -6,18 +7,19 @@ namespace chatApp.Hubs
     public record Register(string Origin, string CompanyName);
     public record User(string Name, string Email);
     public record ChatGroup(string Id, string Origin, string GroupName,bool IsPrivate, string UsersJson);
-    //public record ChatGroupView(string Id, string GroupName, bool IsPrivate, List<User> users);
     public record ChatMessage(string GroupId, string Message, string UserName, DateTime CreatedAt);
     public record ChatUnreadStatus(string UserId, string GroupName, string Origin);
     public class ChatService : IChatService
     {
-        private IDictionary<string, User> activeUsers = new Dictionary<string, User>();
-        private Dictionary<string,List<User>> users = new Dictionary<string, List<User>>();
-        private List<ChatGroup> groups = new List<ChatGroup>();
-        private List<ChatMessage> messages = new List<ChatMessage>();
-        private List<ChatUnreadStatus> unreadStatus = new List<ChatUnreadStatus>();
-        private List<Register> origins = new List<Register>();
-        public ChatService() {
+        private static IDictionary<string, User> activeUsers = new Dictionary<string, User>();
+        private static Dictionary<string,List<User>> users = new Dictionary<string, List<User>>();
+        private static List<ChatGroup> groups = new List<ChatGroup>();
+        private static List<ChatMessage> messages = new List<ChatMessage>();
+        private static List<ChatUnreadStatus> unreadStatus = new List<ChatUnreadStatus>();
+        private static List<Register> origins = new List<Register>();
+        private readonly IRegisterRepository registerRepository;
+        public ChatService(IRegisterRepository registerRepository) {
+            this.registerRepository = registerRepository?? throw new ArgumentNullException(nameof(registerRepository));
             origins.Add(new Register(Origin: "http://localhost:3000", CompanyName: "com1"));
             origins.Add(new Register(Origin: "http://localhost:3001", CompanyName: "com2"));
             foreach (var item in origins)
@@ -28,7 +30,7 @@ namespace chatApp.Hubs
         }
         public List<ChatGroup> GetGroups(string userId, string origin)
         { 
-            return this.groups.Where(group=> group.Origin == origin)
+            return groups.Where(group=> group.Origin == origin)
                 .Where(group => group.UsersJson.Contains(userId)||group.GroupName.EndsWith("All Users"))
                 .ToList();
         }
@@ -53,7 +55,7 @@ namespace chatApp.Hubs
             {
                 activeUsers.Add(connectionId, currentUser);
             }
-            this.users[origin] = users;
+            ChatService.users[origin] = users;
         }
 
         public ChatMessage CreateMessage(User sender, UpcomingMessage um)
@@ -84,7 +86,7 @@ namespace chatApp.Hubs
         }
         private void SendEmail(User sender, UpcomingMessage um)
         {
-            var onlineUsers=activeUsers.Values.ToDictionary(it => it.Email);
+            var onlineUsers=activeUsers.Values.Where(it=>it!=null).ToDictionary(it => it.Email);
             var offlineUsers = new List<User>();
             foreach(var user in (um.GroupName.EndsWith("All Users")? users[um.Origin] : JsonSerializer.Deserialize<List<User>>(um.UsersJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })) ?? []) {
                 if (!onlineUsers.ContainsKey(user.Email))
@@ -109,12 +111,12 @@ namespace chatApp.Hubs
 
         public void RemoveUnreadStatusByGroupName(string userId, string groupName)
         {
-            this.unreadStatus=this.unreadStatus.Where(it=>!(it.UserId==userId && it.GroupName==groupName)).ToList();
+            unreadStatus=unreadStatus.Where(it=>!(it.UserId==userId && it.GroupName==groupName)).ToList();
         }
 
         public Dictionary<string, int> GetUnreadStatuses(string userId, string origin)
         {
-            var data= this.unreadStatus.Where(it=>it.Origin==origin).Where(it=>it.UserId==userId).ToList();
+            var data= unreadStatus.Where(it=>it.Origin==origin).Where(it=>it.UserId==userId).ToList();
             var dic=new Dictionary<string, int>();
             foreach (var item in data)
             {
