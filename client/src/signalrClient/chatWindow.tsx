@@ -1,3 +1,8 @@
+declare global {
+  // eslint-disable-next-line no-var
+  var unreadStatusSignal: ((status: Record<string, number>) => void) | undefined;
+}
+
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +80,8 @@ const ChatWindow: React.FC<Params> = ({
           }));
           if (typeof unreadStatusSignal === "function") {
             unreadStatusSignal(data.unreadStatus);
+          }else if(typeof globalThis.unreadStatusSignal === 'function'){
+            globalThis.unreadStatusSignal(data.unreadStatus)
           }
           break;
         case "messagesByGroupId":
@@ -136,9 +143,9 @@ const ChatWindow: React.FC<Params> = ({
                 });
               }
               if (typeof unreadStatusSignal === "function") {
-                setTimeout(() => {
                   unreadStatusSignal(newObj.unreadStatus);
-                }, 300);
+              }else if(typeof globalThis.unreadStatusSignal === 'function'){
+                globalThis.unreadStatusSignal(data.unreadStatus)
               }
             }
             return newObj;
@@ -169,6 +176,7 @@ const ChatWindow: React.FC<Params> = ({
                 if (data.creatorId === currentUser.email) {
                   sg = data;
                 }
+                inputRef.current?.focus();
                 io.current?.stop();
                 return { ...pre, groups, selectedGroup: sg };
               }
