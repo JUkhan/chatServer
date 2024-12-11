@@ -5,14 +5,9 @@ namespace chatApp.DB
 {
     public class ChatDbContext(DbContextOptions<ChatDbContext> options): DbContext(options)
     {
-        /*protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseInMemoryDatabase("myDB");
-            base.OnConfiguring(optionsBuilder);
-        }*/
-        public DbSet<RegisterEntity> RegisterEntities { get; set; }
-        public DbSet<GroupEntity> GroupEntities { get; set; }
-        public DbSet<MessageEntity> MessageEntities { get; set; }
+        public DbSet<RegisterEntity> Registers { get; set; }
+        public DbSet<GroupEntity> Groups { get; set; }
+        public DbSet<MessageEntity> Messages { get; set; }
         public DbSet<UnreadStatusEntity> UnreadStatuses { get; set; }
 
     }

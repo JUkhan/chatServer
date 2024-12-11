@@ -1,7 +1,8 @@
 using chatApp.DB;
 using chatApp.Hubs;
+using chatApp.Seed;
 using Microsoft.EntityFrameworkCore;
-var policyName = "_test";
+
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -18,20 +19,13 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IUnreadStatusRepository, UnreadStatusRepository>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddAutoMapper(typeof(ChatService));
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy => policy.WithOrigins("http://localhost:3000","http://localhost:3001").AllowAnyHeader().AllowAnyMethod().AllowCredentials());
     
 });
-/*builder.Services.AddCors(options =>
-{
-    options.AddPolicy(name: policyName,
-                      policy =>
-                      {
-                          policy.WithOrigins("*").AllowAnyHeader()
-                                                    .AllowAnyMethod();
-                      });
-});*/
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -53,5 +47,9 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.MapHub<ChatHub>("/chatHub");
+
+// Seed Database
+
+AppDbInitializer.Seed(app);
 
 app.Run();

@@ -75,5 +75,17 @@ namespace chatApp.DB
             _dbContext.Set<T>().Remove(entity);
             await _dbContext.SaveChangesAsync();
         }
+
+        public async Task AddRangeAsync(IEnumerable<T> range)
+        {
+            _dbContext.Set<T>().AddRange(range);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task DeleteRangeAsync(IEnumerable<T> range)
+        {
+            _dbContext.Set<T>().RemoveRange(range);
+            await _dbContext.SaveChangesAsync();
+        }
     }
 }

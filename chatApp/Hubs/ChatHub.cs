@@ -1,13 +1,14 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using System.Diagnostics;
+using chatApp.Models;
 
 namespace chatApp.Hubs
 {
-    public record UpcomingMessage(string Id, string GroupName, bool IsPrivate, string UsersJson, string Message, string? Origin);
+    
     public class ChatHub : Hub
     {
        
-        private readonly ILogger logger;
+        private readonly ILogger<ChatHub> logger;
         private readonly IChatService chatService;
         public ChatHub(
             ILogger<ChatHub> logger,
@@ -26,7 +27,7 @@ namespace chatApp.Hubs
             if (origin == null) { return; }
             chatService.SetUsers(Context.ConnectionId, currentUser, users, origin);
             
-            var groups = chatService.GetGroups(currentUser.Email, origin);
+            var groups = await chatService.GetGroups(currentUser.Email, origin);
             foreach (var group in groups) {
                  await Groups.AddToGroupAsync(Context.ConnectionId, group.GroupName);
             }
@@ -42,7 +43,8 @@ namespace chatApp.Hubs
 
         public async Task GroupMessage(User sender, UpcomingMessage um)
         {
-            var message = chatService.CreateMessage(sender, um with { Origin=GetOrigin() });
+            var message = await chatService.CreateMessage(sender, um with { Origin=GetOrigin() });
+            logger.LogInformation($"{message}");
             if (um.GroupName.EndsWith("All Users"))
             {
                 await Clients.All.SendAsync("groupMessage", message, um.GroupName, um.IsPrivate);
@@ -54,12 +56,8 @@ namespace chatApp.Hubs
         }
         public async Task NewGroup(User user, ChatGroup group)
         {
-            var ng = chatService.CreateGroup(group with { Origin = GetOrigin() ?? string.Empty });
-            if (ng == null)
-            {
-                await Clients.All.SendAsync("newGroup", group);
-                return;
-            }
+            var ng = await chatService.CreateGroup(group with { Origin = GetOrigin() ?? string.Empty });
+            
             if(group.UsersJson.Contains(user.Email))
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, group.GroupName);
@@ -68,7 +66,7 @@ namespace chatApp.Hubs
         }
         public async Task MessagesByGroupId(ChatGroup group)
         {
-            await Clients.Client(Context.ConnectionId).SendAsync("messagesByGroupId", chatService.chatMessages(group with { Origin = GetOrigin() ?? string.Empty }), group.GroupName);
+            await Clients.Client(Context.ConnectionId).SendAsync("messagesByGroupId", await chatService.chatMessages(group with { Origin = GetOrigin() ?? string.Empty }), group.GroupName);
         }
         public void Reconnected(User user)
         {
@@ -92,15 +90,14 @@ namespace chatApp.Hubs
         {
             return Groups.RemoveFromGroupAsync(Context.ConnectionId, roomName);
         }
-        public override Task OnConnectedAsync()
+        public async override Task OnConnectedAsync()
         {
-            if (!chatService.IsRegistered(GetOrigin()??string.Empty))
+            if (!await chatService.IsRegistered(GetOrigin()??string.Empty))
             {
                 Context.Abort();
             }
             logger.LogInformation($"{this.Context.ConnectionId} Connected");
-            Clients.Client(Context.ConnectionId).SendAsync("connected");
-            return base.OnConnectedAsync();
+            await Clients.Client(Context.ConnectionId).SendAsync("connected");
         }
 
         public override  Task OnDisconnectedAsync(Exception? exception)

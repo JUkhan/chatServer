@@ -1,46 +1,49 @@
 ﻿using chatApp.DB;
-using System.Diagnostics;
 using System.Text.Json;
+using chatApp.Models;
+using AutoMapper;
 
 namespace chatApp.Hubs
 {
-    public record Register(string Origin, string CompanyName);
-    public record User(string Name, string Email);
-    public record ChatGroup(string Id, string Origin, string GroupName,bool IsPrivate, string UsersJson);
-    public record ChatMessage(string GroupId, string Message, string UserName, DateTime CreatedAt);
-    public record ChatUnreadStatus(string UserId, string GroupName, string Origin);
     public class ChatService : IChatService
     {
         private static IDictionary<string, User> activeUsers = new Dictionary<string, User>();
-        private static Dictionary<string,List<User>> users = new Dictionary<string, List<User>>();
-        private static List<ChatGroup> groups = new List<ChatGroup>();
-        private static List<ChatMessage> messages = new List<ChatMessage>();
-        private static List<ChatUnreadStatus> unreadStatus = new List<ChatUnreadStatus>();
-        private static List<Register> origins = new List<Register>();
-        private readonly IRegisterRepository registerRepository;
-        public ChatService(IRegisterRepository registerRepository) {
-            this.registerRepository = registerRepository?? throw new ArgumentNullException(nameof(registerRepository));
-            origins.Add(new Register(Origin: "http://localhost:3000", CompanyName: "com1"));
-            origins.Add(new Register(Origin: "http://localhost:3001", CompanyName: "com2"));
-            foreach (var item in origins)
-            {
-                CreateGroup(new ChatGroup(Guid.NewGuid().ToString(), item.Origin, "All Users", false, UsersJson: ""));
-            }
-            
+        private static Dictionary<string, List<User>> users = new Dictionary<string, List<User>>();
+        private readonly ILogger<ChatService> _logger;
+        private readonly IRegisterRepository _registerRepository;
+        private readonly IMapper _mapper;
+        private readonly IGroupRepository _groupRepository;
+        private readonly IUnreadStatusRepository _unreadStatusRepository;
+        private readonly IMessageRepository _messageRepository;
+        public ChatService(
+            IMessageRepository messageRepository,
+            IUnreadStatusRepository unreadStatusRepository,
+            IGroupRepository groupRepository,
+            ILogger<ChatService> logger,
+            IMapper mapper,
+            IRegisterRepository registerRepository)
+        {
+            _mapper = mapper;
+            _registerRepository = registerRepository ?? throw new ArgumentNullException(nameof(registerRepository));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _groupRepository = groupRepository;
+            _unreadStatusRepository = unreadStatusRepository;
+            _messageRepository = messageRepository;
         }
-        public List<ChatGroup> GetGroups(string userId, string origin)
-        { 
-            return groups.Where(group=> group.Origin == origin)
-                .Where(group => group.UsersJson.Contains(userId)||group.GroupName.EndsWith("All Users"))
-                .ToList();
+        public async Task<List<ChatGroup>> GetGroups(string userId, string origin)
+        {
+            var groups = await _groupRepository.GetAsync(it => it.Origin == origin && (it.UsersJson.Contains(userId) || it.GroupName.EndsWith("All Users")));
+            return _mapper.Map<List<ChatGroup>>(groups);
         }
 
-        public bool IsRegistered(string origin) {
-            return origins.Any(it => it.Origin == origin);
+        public async Task<bool> IsRegistered(string origin)
+        {
+            var dd = await _registerRepository.GetAsync(it => it.Origin == origin);
+            return dd.Any();
         }
         public User GetUser(string connectionId)
         {
-            if(activeUsers.ContainsKey(connectionId)) {  return activeUsers[connectionId]; }
+            if (activeUsers.ContainsKey(connectionId)) { return activeUsers[connectionId]; }
             return new User("", "");
         }
 
@@ -53,71 +56,66 @@ namespace chatApp.Hubs
         {
             if (!activeUsers.ContainsKey(connectionId))
             {
-                activeUsers.Add(connectionId, currentUser);
+                activeUsers.Add(connectionId, currentUser with { Origin = origin });
             }
             ChatService.users[origin] = users;
         }
 
-        public ChatMessage CreateMessage(User sender, UpcomingMessage um)
+        public async Task<ChatMessage> CreateMessage(User sender, UpcomingMessage um)
         {
-            var message = new ChatMessage(GroupId: um.Id, Message: um.Message, UserName: sender.Name, CreatedAt: DateTime.Now);
-            messages.Add(message);
-            SendEmail(sender, um);
-            Debug.WriteLine(message);
-            return message;
+            var message = new MessageEntity { Id = Guid.NewGuid().ToString(), GroupId = um.Id, Message = um.Message, UserName = sender.Name, CreatedAt = DateTime.Now };
+            message = await _messageRepository.AddAsync(message);
+            await SendEmail(sender, um);
+            return _mapper.Map<ChatMessage>(message);
         }
 
-        public string Base64Encode(string plainText)
+        public static string Base64Encode(string plainText)
         {
             var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(plainText);
             return System.Convert.ToBase64String(plainTextBytes);
         }
 
-        public ChatGroup? CreateGroup(ChatGroup group)
+        public async Task<ChatGroup> CreateGroup(ChatGroup group)
         {
             string groupName = $"$@&${Base64Encode(group.Origin)}$@&${group.GroupName}";
-            if (groups.Where(it=>it.Origin==group.Origin).Any(g => g.GroupName.Equals(groupName)))
+            group = group with { GroupName = groupName };
+            var groups = await _groupRepository.GetAsync(it => it.Origin == group.Origin && it.GroupName == groupName);
+            if (groups.Any())
             {
-                return null;
+                return group;
             }
-            var newGroup= group with {Id= Guid.NewGuid().ToString(), GroupName=groupName };
-            groups.Add(newGroup);
-            return newGroup;
+            var newGroup = _mapper.Map<GroupEntity>(group);
+            newGroup.Id = Guid.NewGuid().ToString();
+            newGroup = await _groupRepository.AddAsync(newGroup);
+            return _mapper.Map<ChatGroup>(newGroup);
         }
-        private void SendEmail(User sender, UpcomingMessage um)
+        private async Task<bool> SendEmail(User sender, UpcomingMessage um)
         {
-            var onlineUsers=activeUsers.Values.Where(it=>it!=null).ToDictionary(it => it.Email);
+            var onlineUsers = activeUsers.Values.Where(it => it != null && it.Origin == um.Origin)
+                .DistinctBy(it => it.Email)
+                .ToDictionary(it => it.Email);
             var offlineUsers = new List<User>();
-            foreach(var user in (um.GroupName.EndsWith("All Users")? users[um.Origin] : JsonSerializer.Deserialize<List<User>>(um.UsersJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })) ?? []) {
+            foreach (var user in (um.GroupName.EndsWith("All Users") ? users[um.Origin!] : JsonSerializer.Deserialize<List<User>>(um.UsersJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })) ?? [])
+            {
                 if (!onlineUsers.ContainsKey(user.Email))
                 {
                     offlineUsers.Add(user);
                 }
             }
-            foreach (var item in offlineUsers)
+
+            if (offlineUsers.Any())
             {
-                CreateUnreadStatus(item.Email, um.GroupName, um.Origin??string.Empty);
+                await _unreadStatusRepository.AddRangeAsync(offlineUsers.Select(it => new UnreadStatusEntity { Id = Guid.NewGuid().ToString(), UserId = it.Email, GroupName = um.GroupName, Origin = um.Origin! }));
             }
-            Debug.WriteLine("Email send to Offline users:");
-            Debug.WriteLine(offlineUsers);
+            _logger.LogInformation("Email send to Offline users:");
+            _logger.LogInformation(string.Join(", ", offlineUsers.Select(it => it.Email)));
+            return true;
         }
 
-        public ChatUnreadStatus CreateUnreadStatus(string userId, string groupName, string origin)
+        public async Task<Dictionary<string, int>> GetUnreadStatuses(string userId, string origin)
         {
-            var status= new ChatUnreadStatus(userId, groupName, origin);
-            unreadStatus.Add(status);
-            return status;
-        }
-
-        public void RemoveUnreadStatusByGroupName(string userId, string groupName)
-        {
-            unreadStatus=unreadStatus.Where(it=>!(it.UserId==userId && it.GroupName==groupName)).ToList();
-        }
-
-        public Dictionary<string, int> GetUnreadStatuses(string userId, string origin)
-        {
-            var data= unreadStatus.Where(it=>it.Origin==origin).Where(it=>it.UserId==userId).ToList();
-            var dic=new Dictionary<string, int>();
+            var data = await _unreadStatusRepository.GetAsync(it => it.Origin == origin && it.UserId == userId);
+            var dic = new Dictionary<string, int>();
             foreach (var item in data)
             {
                 if (dic.ContainsKey(item.GroupName))
@@ -132,11 +130,16 @@ namespace chatApp.Hubs
             return dic;
         }
 
-        public List<ChatMessage> chatMessages(ChatGroup group)
+        public async Task<List<ChatMessage>> chatMessages(ChatGroup group)
         {
-            //remove unread status
-            unreadStatus = unreadStatus.Where(it=>it.Origin==group.Origin).Where(it=>it.GroupName!=group.GroupName).ToList();
-            return messages.Where(it=>it.GroupId==group.Id).ToList();
+            var data = await _unreadStatusRepository.GetAsync(it => it.Origin == group.Origin && it.GroupName == group.GroupName);
+            if (data.Any())
+            {
+                await _unreadStatusRepository.DeleteRangeAsync(data);
+            }
+            var messages = await _messageRepository.GetAsync(it => it.GroupId == group.Id);
+
+            return _mapper.Map<List<ChatMessage>>(messages);
         }
 
         public void Reconnected(string connectionId, User user)
